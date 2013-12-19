@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
 
 [assembly: AssemblyCopyright("© 2013 - Jeffrey Morley")]
 [assembly: AssemblyVersion("1.1.0.0")]

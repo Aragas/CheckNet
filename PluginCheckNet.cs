@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Net;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using Rainmeter;
@@ -15,7 +15,7 @@ namespace PluginCheckNet
         public int UpdateRate;
         public int UpdateCounter; // Zero is by default.
         public static API RM;
-        private static readonly Thread networkThread = new Thread(DoB);
+        private static Thread networkThread = new Thread(DoB);
         private static bool ConnectedToInternet;
         private static bool DnsWorks;
 
@@ -29,48 +29,58 @@ namespace PluginCheckNet
 
             SkinAlive.CheckSkinAlive();
 
+            if (!networkThread.IsAlive)
+            {
+                networkThread.Start();
+            }
+            if (networkThread == null)
+            {
+                networkThread = new Thread(DoB);
+                networkThread.Start();
+            }
+
             ConnectionType = rm.ReadString("ConnectionType", "Internet");
             ConnectionType = ConnectionType.ToLowerInvariant();
             if (ConnectionType != "network" && ConnectionType != "internet")
             {
                 API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
             }
-            
+
             UpdateRate = rm.ReadInt("UpdateRate", 20);
             if (UpdateRate <= 0)
             {
                 UpdateRate = 20;
             }
-            
+
         }
 
         private static void DoB()
         {
             ConnectedToInternet = NetworkInterface.GetIsNetworkAvailable();
 
-            //try
-            //{
-            //    IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
-            //
-            //    if (addresslist[0].ToString().Length > 6)
-            //    {
-            //        DnsWorks = true;
-            //    }
-            //    else
-            //    {
-            //        DnsWorks = false;
-            //    }
-            //}
-            //catch
-            //{
-            //    DnsWorks = false;
-            //}
+            try
+            {
+                IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+            
+                if (addresslist[0].ToString().Length > 6)
+                {
+                    DnsWorks = true;
+                }
+                else
+                {
+                    DnsWorks = false;
+                }
+            }
+            catch
+            {
+                DnsWorks = false;
+            }
         }
 
         internal double Update()
         {
-            if (!networkThread.IsAlive)
-                networkThread.Start();
+            //if (!networkThread.IsAlive)
+            //    networkThread.Start();
 
             if (UpdateCounter == 0)
             {
@@ -127,6 +137,7 @@ namespace PluginCheckNet
         }
     }
 
+    // Works.
     public static class SkinAlive
     {
         private static Thread _checkThread;
@@ -163,11 +174,11 @@ namespace PluginCheckNet
             }
         }
 
-        public static void Dispose()
+        private static void Dispose()
         {
+            Measure.Dispose();
             if (_checkThread.IsAlive)
                 _checkThread.Abort();
-            Measure.Dispose();
         }
     }
 
