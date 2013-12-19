@@ -120,7 +120,7 @@ namespace PluginCheckNet
             // (Aragas) Try catch is used because if we make ReadString to a closed RM it will make an APPCRASH.
             try
             {
-                while (Measure.RM.ReadString("PlayerType", "") != "")
+                while (Measure.RM.ReadString("ConnectionType", "") != "")
                 {
                     Thread.Sleep(2000);
                 }
