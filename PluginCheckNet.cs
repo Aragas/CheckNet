@@ -15,6 +15,9 @@ namespace PluginCheckNet
         public int UpdateRate;
         public int UpdateCounter; // Zero is by default.
         public static API RM;
+        private static readonly Thread networkThread = new Thread(DoB);
+        private static bool ConnectedToInternet;
+        private static bool DnsWorks;
 
         internal Measure()
         {
@@ -23,6 +26,8 @@ namespace PluginCheckNet
         internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
         {
             RM = rm;
+
+            SkinAlive.CheckSkinAlive();
 
             ConnectionType = rm.ReadString("ConnectionType", "Internet");
             ConnectionType = ConnectionType.ToLowerInvariant();
@@ -39,13 +44,39 @@ namespace PluginCheckNet
             
         }
 
+        private static void DoB()
+        {
+            ConnectedToInternet = NetworkInterface.GetIsNetworkAvailable();
+
+            //try
+            //{
+            //    IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+            //
+            //    if (addresslist[0].ToString().Length > 6)
+            //    {
+            //        DnsWorks = true;
+            //    }
+            //    else
+            //    {
+            //        DnsWorks = false;
+            //    }
+            //}
+            //catch
+            //{
+            //    DnsWorks = false;
+            //}
+        }
+
         internal double Update()
         {
+            if (!networkThread.IsAlive)
+                networkThread.Start();
+
             if (UpdateCounter == 0)
             {
                 if (ConnectionType == "network" || ConnectionType == "internet")
                 {
-                    if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0) // (Aragas) Removed Rainmeter.
+                    if (Convert.ToDouble(ConnectedToInternet) == 0) // (Aragas) Removed Rainmeter.
                     {
                         ReturnValue = -1.0;
                     }
@@ -57,33 +88,24 @@ namespace PluginCheckNet
 
                 if (ReturnValue == 1.0 && ConnectionType == "internet")
                 {
-                    try
+                    if (DnsWorks)
                     {
-                        IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
-
-                        if (addresslist[0].ToString().Length > 6)
-                        {
-                            ReturnValue = 1.0;
-                        }
-                        else
-                        {
-                            ReturnValue = -1.0;
-                        }
+                        ReturnValue = 1.0;
                     }
-                    catch
+                    else
                     {
                         ReturnValue = -1.0;
                     }
                 }
             }
 
-                UpdateCounter = UpdateCounter + 1;
-                if (UpdateCounter >= UpdateRate)
-                {
-                    UpdateCounter = 0;
-                }
+            UpdateCounter = UpdateCounter + 1;
+            if (UpdateCounter >= UpdateRate)
+            {
+                UpdateCounter = 0;
+            }
 
-                return ReturnValue;
+            return ReturnValue;
         }
 
         //internal string GetString()
@@ -94,12 +116,22 @@ namespace PluginCheckNet
         //internal void ExecuteBang(string args)
         //{
         //}
+
+
+        // Needed to make a normal static Dispose (Or i can just make SkinAlive non-static, later).
+
+        public static void Dispose()
+        {
+            if (networkThread.IsAlive)
+                networkThread.Abort();
+        }
     }
 
     public static class SkinAlive
     {
         private static Thread _checkThread;
 
+        // Just call this void and don't worry. It will terminate itself.
         public static void CheckSkinAlive()
         {
             if (_checkThread == null)
@@ -135,6 +167,7 @@ namespace PluginCheckNet
         {
             if (_checkThread.IsAlive)
                 _checkThread.Abort();
+            Measure.Dispose();
         }
     }
 
