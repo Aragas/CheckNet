@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Net;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Net.NetworkInformation;
+using System.Threading;
 using Rainmeter;
 
 namespace PluginCheckNet
@@ -11,16 +11,19 @@ namespace PluginCheckNet
     internal class Measure
     {
         public string ConnectionType;
-        public double ReturnValue = 0;
+        public double ReturnValue; // Zero is by default.
         public int UpdateRate;
-        public int UpdateCounter = 0;
+        public int UpdateCounter; // Zero is by default.
+        public static API RM;
 
         internal Measure()
         {
         }
 
-        internal void Reload(Rainmeter.API rm, ref double maxValue)
+        internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
         {
+            RM = rm;
+
             ConnectionType = rm.ReadString("ConnectionType", "Internet");
             ConnectionType = ConnectionType.ToLowerInvariant();
             if (ConnectionType != "network" && ConnectionType != "internet")
@@ -42,7 +45,7 @@ namespace PluginCheckNet
             {
                 if (ConnectionType == "network" || ConnectionType == "internet")
                 {
-                    if (System.Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0)
+                    if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0) // (Aragas) Removed Rainmeter.
                     {
                         ReturnValue = -1.0;
                     }
@@ -91,6 +94,48 @@ namespace PluginCheckNet
         //internal void ExecuteBang(string args)
         //{
         //}
+    }
+
+    public static class SkinAlive
+    {
+        private static Thread _checkThread;
+
+        public static void CheckSkinAlive()
+        {
+            if (_checkThread == null)
+            {
+                _checkThread = new Thread(CheckThread);
+                _checkThread.Start();
+            }
+
+            if (!_checkThread.IsAlive)
+            {
+                _checkThread = new Thread(CheckThread);
+                _checkThread.Start();
+            }
+        }
+
+        private static void CheckThread() // Must be in thread.
+        {
+            // (Aragas) Try catch is used because if we make ReadString to a closed RM it will make an APPCRASH.
+            try
+            {
+                while (Measure.RM.ReadString("PlayerType", "") != "")
+                {
+                    Thread.Sleep(2000);
+                }
+            }
+            catch
+            {
+                Dispose();
+            }
+        }
+
+        public static void Dispose()
+        {
+            if (_checkThread.IsAlive)
+                _checkThread.Abort();
+        }
     }
 
     public static class Plugin
