@@ -14,11 +14,10 @@ namespace PluginCheckNet
         public int UpdateCounter;
         public int UpdateRate;
 
-        static Thread networkThread;
+        static Thread _networkThread;
 
         void Internet()
         {
-            //API.Log(API.LogType.Error, "1243");
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
                 ReturnValue = -1.0;
@@ -57,7 +56,6 @@ namespace PluginCheckNet
                 ReturnValue = 1.0;
             }
 
-            //API.Log(API.LogType.Error, "123");
             Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
         }
 
@@ -71,23 +69,25 @@ namespace PluginCheckNet
             UpdateRate = rm.ReadInt("UpdateRate", 20);
 
             if (UpdateRate <= 0)
+            {
                 UpdateRate = 20;
+            }
 
             switch (ConnectionType.ToUpperInvariant())
             {
                 case "INTERNET":
-                    if (networkThread == null)
+                    if (_networkThread == null)
                     {
-                        networkThread = new Thread(Internet);
-                        networkThread.Start();
+                        _networkThread = new Thread(Internet);
+                        _networkThread.Start();
                     }
                     break;
 
                 case "NETWORK":
-                    if (networkThread == null)
+                    if (_networkThread == null)
                     {
-                        networkThread = new Thread(Network);
-                        networkThread.Start();
+                        _networkThread = new Thread(Network);
+                        _networkThread.Start();
                     }
                     break;
 
@@ -101,39 +101,39 @@ namespace PluginCheckNet
         // (Aragas) Just reading all variables from .dll and showing in Rainmeter.
         internal double Update()
         {
-                switch (ConnectionType.ToUpperInvariant())
-                {
-                    case "NETWORK":
-                        switch (networkThread.ThreadState)
+            switch (ConnectionType.ToUpperInvariant())
+            {
+                case "NETWORK":
+                    if (UpdateCounter == 0)
+                    {
+                        if (_networkThread.ThreadState == ThreadState.Stopped)
+                            // (Aragas) We check here if it is the time to update information.
                         {
-                            case ThreadState.Stopped:
-                                if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
-                                {
-                                    networkThread = new Thread(Network);
-                                    networkThread.Start();
-                                }
-                                break;
+                            _networkThread = new Thread(Network);
+                            _networkThread.Start();
                         }
-                        break;
+                    }
+                    break;
 
-                    case "INTERNET":
-                        switch (networkThread.ThreadState)
+                case "INTERNET":
+                    if (UpdateCounter == 0)
+                    {
+                        if (_networkThread.ThreadState == ThreadState.Stopped)
+                            // (Aragas) We check here if it is the time to update information.
                         {
-                            case ThreadState.Stopped:
-                                if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
-                                {
-                                    networkThread = new Thread(Internet);
-                                    networkThread.Start();
-                                }
-                                break;
+                            _networkThread = new Thread(Internet);
+                            _networkThread.Start();
                         }
-                        break;
-                }
+                    }
+                    break;
+            }
 
             // (Aragas) Counter must be placed in Update()
             UpdateCounter = UpdateCounter + 1;
             if (UpdateCounter >= UpdateRate)
+            {
                 UpdateCounter = 0;
+            }
 
             return ReturnValue;
         }
@@ -151,8 +151,8 @@ namespace PluginCheckNet
 
         internal static void Dispose()
         {
-            if (networkThread.IsAlive)
-                networkThread.Abort();
+            if (_networkThread.IsAlive)
+                _networkThread.Abort();
         }
     }
 
