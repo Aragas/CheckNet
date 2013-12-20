@@ -85,6 +85,7 @@ namespace PluginCheckNet
         {
             SkinHandle = rm.GetSkin();
             ConnectionType = rm.ReadString("ConnectionType", "INTERNET").ToUpperInvariant();
+            _finishAction = rm.ReadString("FinishAction", "");
             if (ConnectionType != "NETWORK" && ConnectionType != "INTERNET")
             {
                 API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
@@ -95,8 +96,6 @@ namespace PluginCheckNet
             {
                 UpdateRate = 20;
             }
-
-            _finishAction = rm.ReadString("FinishAction", "");
         }
 
         internal double Update()
