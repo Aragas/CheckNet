@@ -155,7 +155,6 @@ namespace PluginCheckNet
         // (Aragas) Recommend to put this in all samples. If is unused, juts make there return;
         internal static void Dispose()
         {
-            API.Log(API.LogType.Error, "Holy shit");
             if (networkThread.IsAlive)
                 networkThread.Abort();
         }
