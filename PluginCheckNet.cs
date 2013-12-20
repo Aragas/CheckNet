@@ -11,8 +11,8 @@ namespace PluginCheckNet
     {
         public string ConnectionType;
         public double ReturnValue;
-        //public int UpdateCounter;
-        //public int UpdateRate;
+        public int UpdateCounter;
+        public int UpdateRate;
 
         static bool ConnectedToInternet;
         static bool ConnectedToNetwork;
@@ -20,6 +20,7 @@ namespace PluginCheckNet
 
         static void Internet()
         {
+            API.Log(API.LogType.Error, "New thread");
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
                 ConnectedToInternet = false;
@@ -43,20 +44,28 @@ namespace PluginCheckNet
             {
                 ConnectedToInternet = false;
             }
+            Thread.CurrentThread.Abort();
         }
 
         static void Network()
         {
+            API.Log(API.LogType.Error, "New thread1");
             ConnectedToNetwork = NetworkInterface.GetIsNetworkAvailable();
+            Thread.CurrentThread.Abort();
         }
 
         internal Measure()
         {
         }
 
+
         internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
         {
             ConnectionType = rm.ReadString("ConnectionType", "Internet");
+            UpdateRate = rm.ReadInt("UpdateRate", 20);
+
+            if (UpdateRate <= 0)
+                UpdateRate = 20;
 
             switch (ConnectionType.ToUpperInvariant())
             {
@@ -70,12 +79,12 @@ namespace PluginCheckNet
                             networkThread.Start();
                             break;
 
-                        case ThreadState.Running:
-                            break;
-
                         case ThreadState.Stopped:
-                            networkThread = new Thread(Internet);
-                            networkThread.Start();
+                            if (UpdateCounter == 0)
+                            {
+                                networkThread = new Thread(Internet);
+                                networkThread.Start();
+                            }
                             break;
                     }
                     break;
@@ -90,9 +99,6 @@ namespace PluginCheckNet
                             networkThread.Start();
                             break;
 
-                        case ThreadState.Running:
-                            break;
-
                         case ThreadState.Stopped:
                             networkThread = new Thread(Network);
                             networkThread.Start();
@@ -105,17 +111,11 @@ namespace PluginCheckNet
                     break;
             }
 
-            //UpdateRate = rm.ReadInt("UpdateRate", 20);
-            //if (UpdateRate <= 0)
-            //{
-            //    UpdateRate = 20;
-            //}
         }
 
+        // Just reading all variables from .dll and showing in Rainmeter.
         internal double Update()
         {
-            //if (UpdateCounter == 0)
-            //{
                 switch (ConnectionType.ToUpperInvariant())
                 {
                     case "NETWORK":
@@ -132,13 +132,10 @@ namespace PluginCheckNet
                             ReturnValue = -1.0;
                         break;
                 }
-            //}
 
-            //UpdateCounter = UpdateCounter + 1;
-            //if (UpdateCounter >= UpdateRate)
-            //{
-            //    UpdateCounter = 0;
-            //}
+            UpdateCounter++;
+            if (UpdateCounter >= UpdateRate)
+                UpdateCounter = 0;
 
             return ReturnValue;
         }
@@ -153,6 +150,7 @@ namespace PluginCheckNet
         //}
 
         // (Aragas) Recommend to put this in all samples. If is unused, juts make there return;
+
         internal static void Dispose()
         {
             if (networkThread.IsAlive)
@@ -162,7 +160,7 @@ namespace PluginCheckNet
 
     static class Plugin
     {
-        internal static Dictionary<uint, Measure> Measures = new Dictionary<uint, Measure>();
+        static Dictionary<uint, Measure> Measures = new Dictionary<uint, Measure>();
 
         [DllExport]
         public unsafe static void Finalize(void* data)
