@@ -1,23 +1,54 @@
-﻿using System;
+﻿using Rainmeter;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
-using Rainmeter;
 
 namespace PluginCheckNet
 {
-
     internal class Measure
     {
         public string ConnectionType;
-        public double ReturnValue; // Zero is by default.
+        public double ReturnValue;
+        public int UpdateCounter;
         public int UpdateRate;
-        public int UpdateCounter; // Zero is by default.
-        public static API RM;
-        private static Thread networkThread = new Thread(DoB);
-        private static bool ConnectedToInternet;
-        private static bool DnsWorks;
+
+        static bool ConnectedToInternet;
+        static bool ConnectedToNetwork;
+        static Thread networkThread;
+
+        static void Internet()
+        {
+            if (!NetworkInterface.GetIsNetworkAvailable())
+            {
+                ConnectedToInternet = false;
+                return;
+            }
+
+            try
+            {
+                IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+
+                if (addresslist[0].ToString().Length > 6)
+                {
+                    ConnectedToInternet = true;
+                }
+                else
+                {
+                    ConnectedToInternet = false;
+                }
+            }
+            catch
+            {
+                ConnectedToInternet = false;
+            }
+        }
+
+        static void Network()
+        {
+            ConnectedToNetwork = NetworkInterface.GetIsNetworkAvailable();
+        }
 
         internal Measure()
         {
@@ -25,25 +56,53 @@ namespace PluginCheckNet
 
         internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
         {
-            RM = rm;
-
-            SkinAlive.CheckSkinAlive();
-
-            if (!networkThread.IsAlive)
-            {
-                networkThread.Start();
-            }
-            if (networkThread == null)
-            {
-                networkThread = new Thread(DoB);
-                networkThread.Start();
-            }
-
             ConnectionType = rm.ReadString("ConnectionType", "Internet");
-            ConnectionType = ConnectionType.ToLowerInvariant();
-            if (ConnectionType != "network" && ConnectionType != "internet")
+
+            switch (ConnectionType.ToUpperInvariant())
             {
-                API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
+                case "INTERNET":
+                    if (networkThread == null)
+                        networkThread = new Thread(Internet);
+
+                    switch (networkThread.ThreadState)
+                    {
+                        case ThreadState.Unstarted:
+                            networkThread.Start();
+                            break;
+
+                        case ThreadState.Running:
+                            break;
+
+                        case ThreadState.Stopped:
+                            networkThread = new Thread(Internet);
+                            networkThread.Start();
+                            break;
+                    }
+                    break;
+
+                case "NETWORK":
+                    if (networkThread == null)
+                        networkThread = new Thread(Network);
+
+                    switch (networkThread.ThreadState)
+                    {
+                        case ThreadState.Unstarted:
+                            networkThread.Start();
+                            break;
+
+                        case ThreadState.Running:
+                            break;
+
+                        case ThreadState.Stopped:
+                            networkThread = new Thread(Network);
+                            networkThread.Start();
+                            break;
+                    }
+                    break;
+
+                default:
+                    API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
+                    break;
             }
 
             UpdateRate = rm.ReadInt("UpdateRate", 20);
@@ -51,61 +110,27 @@ namespace PluginCheckNet
             {
                 UpdateRate = 20;
             }
-
-        }
-
-        private static void DoB()
-        {
-            ConnectedToInternet = NetworkInterface.GetIsNetworkAvailable();
-
-            try
-            {
-                IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
-            
-                if (addresslist[0].ToString().Length > 6)
-                {
-                    DnsWorks = true;
-                }
-                else
-                {
-                    DnsWorks = false;
-                }
-            }
-            catch
-            {
-                DnsWorks = false;
-            }
         }
 
         internal double Update()
         {
-            //if (!networkThread.IsAlive)
-            //    networkThread.Start();
-
             if (UpdateCounter == 0)
             {
-                if (ConnectionType == "network" || ConnectionType == "internet")
+                switch (ConnectionType.ToUpperInvariant())
                 {
-                    if (Convert.ToDouble(ConnectedToInternet) == 0) // (Aragas) Removed Rainmeter.
-                    {
-                        ReturnValue = -1.0;
-                    }
-                    else
-                    {
-                        ReturnValue = 1.0;
-                    }
-                }
+                    case "NETWORK":
+                        if (ConnectedToNetwork) // (Aragas) Removed Rainmeter.
+                            ReturnValue = 1.0;
+                        else
+                            ReturnValue = -1.0;
+                        break;
 
-                if (ReturnValue == 1.0 && ConnectionType == "internet")
-                {
-                    if (DnsWorks)
-                    {
-                        ReturnValue = 1.0;
-                    }
-                    else
-                    {
-                        ReturnValue = -1.0;
-                    }
+                    case "INTERNET":
+                        if (ConnectedToInternet)
+                            ReturnValue = 1.0;
+                        else
+                            ReturnValue = -1.0;
+                        break;
                 }
             }
 
@@ -127,77 +152,33 @@ namespace PluginCheckNet
         //{
         //}
 
-
-        // Needed to make a normal static Dispose (Or i can just make SkinAlive non-static, later).
-
-        public static void Dispose()
+        // (Aragas) Recommend to put this in all samples. If is unused, juts make there return;
+        internal static void Dispose()
         {
+            API.Log(API.LogType.Error, "Holy shit");
             if (networkThread.IsAlive)
                 networkThread.Abort();
         }
     }
 
-    // Works.
-    public static class SkinAlive
+    static class Plugin
     {
-        private static Thread _checkThread;
+        internal static Dictionary<uint, Measure> Measures = new Dictionary<uint, Measure>();
 
-        // Just call this void and don't worry. It will terminate itself.
-        public static void CheckSkinAlive()
+        [DllExport]
+        public unsafe static void Finalize(void* data)
         {
-            if (_checkThread == null)
-            {
-                _checkThread = new Thread(CheckThread);
-                _checkThread.Start();
-            }
-
-            if (!_checkThread.IsAlive)
-            {
-                _checkThread = new Thread(CheckThread);
-                _checkThread.Start();
-            }
+            Measure.Dispose(); // (Aragas) Recommend to put this in all samples.
+            uint id = (uint)data;
+            Measures.Remove(id);
         }
 
-        private static void CheckThread() // Must be in thread.
-        {
-            // (Aragas) Try catch is used because if we make ReadString to a closed RM it will make an APPCRASH.
-            try
-            {
-                while (Measure.RM.ReadString("ConnectionType", "") != "")
-                {
-                    Thread.Sleep(2000);
-                }
-            }
-            catch
-            {
-                Dispose();
-            }
-        }
-
-        private static void Dispose()
-        {
-            Measure.Dispose();
-            if (_checkThread.IsAlive)
-                _checkThread.Abort();
-        }
-    }
-
-    public static class Plugin
-    {
         [DllExport]
         public unsafe static void Initialize(void** data, void* rm)
         {
             uint id = (uint)((void*)*data);
             Measures.Add(id, new Measure());
         }
-
-        [DllExport]
-        public unsafe static void Finalize(void* data)
-        {
-            uint id = (uint)data;
-            Measures.Remove(id);
-        }
-
         [DllExport]
         public unsafe static void Reload(void* data, void* rm, double* maxValue)
         {
@@ -225,7 +206,6 @@ namespace PluginCheckNet
         //    uint id = (uint)data;
         //    Measures[id].ExecuteBang(new string(args));
         //}
-
-        internal static Dictionary<uint, Measure> Measures = new Dictionary<uint, Measure>();
     }
+
 }
