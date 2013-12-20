@@ -102,20 +102,21 @@ namespace PluginCheckNet
         //{
         //}
 
-        // (Aragas) Recommend to put this in all samples. If is unused, juts make there return;
 
+        // (Aragas) Recommend to put this in all samples. If is unused, juts make there return;
         internal static void Dispose()
         {
             if (_networkThread.IsAlive)
                 _networkThread.Abort();
         }
 
+        // (Aragas) This would maybe make plugin more confusing for begginers, but... WINDOWS API!!
         [DllImport("wininet.dll")]
-        private extern static bool InternetGetConnectedState(out int description, int reservedValue);
-        public static bool IsConnectedToInternet()
+        extern static bool InternetGetConnectedState(out int status, int reservedValue);
+        static bool IsConnectedToInternet()
         {
-            int desc;
-            return InternetGetConnectedState(out desc, 0);
+            int stat = 0;
+            return InternetGetConnectedState(out stat, 0);
         }
     }
 
