@@ -20,13 +20,13 @@ namespace PluginCheckNet
         {
             if ((string)type == "NETWORK" || (string)type == "INTERNET")
             {
-                if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0)
+                if (NetworkInterface.GetIsNetworkAvailable())
                 {
-                    ReturnValue = -1.0;
+                    ReturnValue = 1.0;
                 }
                 else
                 {
-                    ReturnValue = 1.0;
+                    ReturnValue = -1.0;
                 }
             }
 
@@ -34,9 +34,7 @@ namespace PluginCheckNet
             {
                 try
                 {
-                    IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
-
-                    if (addresslist[0].ToString().Length > 6)
+                    if (Dns.GetHostAddresses("www.msftncsi.com")[0].ToString().Length > 6)
                     {
                         ReturnValue = 1.0;
                     }
