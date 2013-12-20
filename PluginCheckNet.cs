@@ -17,7 +17,7 @@ namespace PluginCheckNet
         private string _finishAction;
 
         static Thread _networkThread;
-        private RulyCanceler canceler;
+        private static RulyCanceler canceler;
 
         public void FinishAction(string action)
         {
@@ -152,7 +152,7 @@ namespace PluginCheckNet
         internal static void Dispose()
         {
             if (_networkThread.IsAlive)
-                _networkThread.Abort();
+                canceler.Cancel();
         }
     }
 

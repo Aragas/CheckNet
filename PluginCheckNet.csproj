@@ -82,10 +82,11 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\API\RainmeterAPI.cs">
+      <Link>RainmeterAPI.cs</Link>
+    </Compile>
     <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="DllExport.cs" />
     <Compile Include="PluginCheckNet.cs" />
-    <Compile Include="RainmeterAPI.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
