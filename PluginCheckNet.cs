@@ -20,7 +20,6 @@ namespace PluginCheckNet
 
         static void Internet()
         {
-            API.Log(API.LogType.Error, "New thread");
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
                 ConnectedToInternet = false;
@@ -44,20 +43,18 @@ namespace PluginCheckNet
             {
                 ConnectedToInternet = false;
             }
-            Thread.CurrentThread.Abort();
+            Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
         }
 
         static void Network()
         {
-            API.Log(API.LogType.Error, "New thread1");
             ConnectedToNetwork = NetworkInterface.GetIsNetworkAvailable();
-            Thread.CurrentThread.Abort();
+            Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
         }
 
         internal Measure()
         {
         }
-
 
         internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
         {
@@ -80,7 +77,7 @@ namespace PluginCheckNet
                             break;
 
                         case ThreadState.Stopped:
-                            if (UpdateCounter == 0)
+                            if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
                             {
                                 networkThread = new Thread(Internet);
                                 networkThread.Start();
@@ -100,8 +97,11 @@ namespace PluginCheckNet
                             break;
 
                         case ThreadState.Stopped:
-                            networkThread = new Thread(Network);
-                            networkThread.Start();
+                            if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
+                            {
+                                networkThread = new Thread(Network);
+                                networkThread.Start();
+                            }
                             break;
                     }
                     break;
@@ -113,7 +113,7 @@ namespace PluginCheckNet
 
         }
 
-        // Just reading all variables from .dll and showing in Rainmeter.
+        // (Aragas) Just reading all variables from .dll and showing in Rainmeter.
         internal double Update()
         {
                 switch (ConnectionType.ToUpperInvariant())
@@ -133,6 +133,7 @@ namespace PluginCheckNet
                         break;
                 }
 
+            // (Aragas) Counter must be placed in Update()
             UpdateCounter++;
             if (UpdateCounter >= UpdateRate)
                 UpdateCounter = 0;
