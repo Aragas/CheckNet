@@ -20,6 +20,7 @@ namespace PluginCheckNet
 
         static void Internet()
         {
+            //API.Log(API.LogType.Error, "1243");
             if (!NetworkInterface.GetIsNetworkAvailable())
             {
                 ConnectedToInternet = false;
@@ -48,6 +49,7 @@ namespace PluginCheckNet
 
         static void Network()
         {
+            //API.Log(API.LogType.Error, "123");
             ConnectedToNetwork = NetworkInterface.GetIsNetworkAvailable();
             Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
         }
@@ -68,41 +70,17 @@ namespace PluginCheckNet
             {
                 case "INTERNET":
                     if (networkThread == null)
-                        networkThread = new Thread(Internet);
-
-                    switch (networkThread.ThreadState)
                     {
-                        case ThreadState.Unstarted:
-                            networkThread.Start();
-                            break;
-
-                        case ThreadState.Stopped:
-                            if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
-                            {
-                                networkThread = new Thread(Internet);
-                                networkThread.Start();
-                            }
-                            break;
+                        networkThread = new Thread(Internet);
+                        networkThread.Start();
                     }
                     break;
 
                 case "NETWORK":
                     if (networkThread == null)
-                        networkThread = new Thread(Network);
-
-                    switch (networkThread.ThreadState)
                     {
-                        case ThreadState.Unstarted:
-                            networkThread.Start();
-                            break;
-
-                        case ThreadState.Stopped:
-                            if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
-                            {
-                                networkThread = new Thread(Network);
-                                networkThread.Start();
-                            }
-                            break;
+                        networkThread = new Thread(Network);
+                        networkThread.Start();
                     }
                     break;
 
@@ -119,6 +97,17 @@ namespace PluginCheckNet
                 switch (ConnectionType.ToUpperInvariant())
                 {
                     case "NETWORK":
+                        switch (networkThread.ThreadState)
+                        {
+                            case ThreadState.Stopped:
+                                if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
+                                {
+                                    networkThread = new Thread(Network);
+                                    networkThread.Start();
+                                }
+                                break;
+                        }
+
                         if (ConnectedToNetwork) // (Aragas) Removed Rainmeter.
                             ReturnValue = 1.0;
                         else
@@ -126,6 +115,21 @@ namespace PluginCheckNet
                         break;
 
                     case "INTERNET":
+                        switch (networkThread.ThreadState)
+                        {
+                            case ThreadState.Unstarted:
+                                networkThread.Start();
+                                break;
+
+                            case ThreadState.Stopped:
+                                if (UpdateCounter == 0) // (Aragas) We check here if it is the time to update information.
+                                {
+                                    networkThread = new Thread(Internet);
+                                    networkThread.Start();
+                                }
+                                break;
+                        }
+
                         if (ConnectedToInternet)
                             ReturnValue = 1.0;
                         else
@@ -134,7 +138,7 @@ namespace PluginCheckNet
                 }
 
             // (Aragas) Counter must be placed in Update()
-            UpdateCounter++;
+            UpdateCounter = UpdateCounter + 1;
             if (UpdateCounter >= UpdateRate)
                 UpdateCounter = 0;
 
