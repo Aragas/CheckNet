@@ -86,7 +86,7 @@ namespace PluginCheckNet
         {
             if (UpdateCounter == 0)
             {
-                if (ConnectionType == "network" || ConnectionType == "internet")
+                if (ConnectionType == "NETWORK" || ConnectionType == "INTERNET")
                 {
                     if (_networkThread.ThreadState == ThreadState.Stopped)
                     // (Aragas) We check here if it is the time to update information.
