@@ -1,73 +1,104 @@
-﻿using System.Runtime.InteropServices;
-using Rainmeter;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
+using Rainmeter;
 
 namespace PluginCheckNet
 {
     internal class Measure
     {
+        public IntPtr SkinHandle;
         public string ConnectionType;
         public double ReturnValue;
         public int UpdateCounter;
         public int UpdateRate;
+        private string _finishAction;
 
         static Thread _networkThread;
+        private RulyCanceler canceler;
 
-        void CheckConnection(object type)
+        public void FinishAction(string action)
         {
-            if ((string)type == "NETWORK" || (string)type == "INTERNET")
+            if (!String.IsNullOrEmpty(_finishAction))
             {
-                if (NetworkInterface.GetIsNetworkAvailable())
+                API.Execute(SkinHandle, _finishAction);
+            }
+        }
+
+        void CheckConnection(object type, RulyCanceler c)
+        {
+            while (true)
+            {
+                c.ThrowIfCancellationRequested();
+
+                #region code
+                if ((string)type == "NETWORK" || (string)type == "INTERNET")
+            {
+                if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0)
+                {
+                    ReturnValue = -1.0;
+                }
+                else
                 {
                     ReturnValue = 1.0;
                 }
-                else
+            }
+
+            if (ReturnValue == 1.0 && (string)type == "INTERNET")
+            {
+                try
+                {
+                    IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+
+                    if (addresslist[0].ToString().Length > 6)
+                    {
+                        ReturnValue = 1.0;
+                    }
+                    else
+                    {
+                        ReturnValue = -1.0;
+                    }
+                }
+                catch
                 {
                     ReturnValue = -1.0;
                 }
             }
+                #endregion
 
-            if (ReturnValue == 1.0 && (string) type == "INTERNET")
-            {
-                if (IsConnectedToInternet())
-                {
-                    ReturnValue = 1.0;
-                }
-                else
-                {
-                    ReturnValue = -1.0;
-                }
+            FinishAction(_finishAction);
+            //try { OtherMethod(c); }
+            //finally { /* any required cleanup */ }
+            API.Log(API.LogType.Error, "ThreadIsClosed");
+            canceler.Cancel();
             }
-
-            Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
+            //Thread.CurrentThread.Abort(); // Never end a thread in the main Update() function.
         }
 
         internal Measure()
         {
         }
 
-        internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
+        internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
+            SkinHandle = rm.GetSkin();
             ConnectionType = rm.ReadString("ConnectionType", "INTERNET").ToUpperInvariant();
-            UpdateRate = rm.ReadInt("UpdateRate", 20);
-
-            if (UpdateRate <= 0)
-            {
-                UpdateRate = 20;
-            }
-
             if (ConnectionType != "NETWORK" && ConnectionType != "INTERNET")
             {
                 API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
             }
 
+            UpdateRate = rm.ReadInt("UpdateRate", 20);
+            if (UpdateRate <= 0)
+            {
+                UpdateRate = 20;
+            }
+
+            _finishAction = rm.ReadString("FinishAction", "");
         }
 
-        // (Aragas) Just reading all variables from .dll and showing in Rainmeter.
         internal double Update()
         {
             if (UpdateCounter == 0)
@@ -75,15 +106,28 @@ namespace PluginCheckNet
                 if (ConnectionType == "NETWORK" || ConnectionType == "INTERNET")
                 {
                     if (_networkThread == null ||_networkThread.ThreadState == ThreadState.Stopped)
-                    // (Aragas) We check here if it is the time to update information.
+                    //We check here to see if all existing instances of the thread have stopped,
+                    //and start a new one if so.
                     {
-                        _networkThread = new Thread(CheckConnection);
-                        _networkThread.Start(ConnectionType);
+                        canceler = new RulyCanceler();
+                        _networkThread = new Thread(() =>
+                        {
+                            try
+                            {
+                                CheckConnection(ConnectionType, canceler);
+
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                
+                            }
+
+                        });
+                        _networkThread.Start();
                     }
                 }
             }
 
-            // (Aragas) Counter must be placed in Update()
             UpdateCounter = UpdateCounter + 1;
             if (UpdateCounter >= UpdateRate)
             {
@@ -102,21 +146,30 @@ namespace PluginCheckNet
         //{
         //}
 
+        //it is recommended that this Dispose() function be in all examples,
+        //and called in Finalize().
 
-        // (Aragas) Recommend to put this in all samples. If is unused, juts make there return;
         internal static void Dispose()
         {
             if (_networkThread.IsAlive)
                 _networkThread.Abort();
         }
+    }
 
-        // (Aragas) This would maybe make plugin more confusing for begginers, but... WINDOWS API!!
-        [DllImport("wininet.dll")]
-        extern static bool InternetGetConnectedState(out int status, int reservedValue);
-        static bool IsConnectedToInternet()
+    class RulyCanceler
+    {
+        object _cancelLocker = new object();
+        bool _cancelRequest;
+        public bool IsCancellationRequested
         {
-            int stat = 0;
-            return InternetGetConnectedState(out stat, 0);
+            get { lock (_cancelLocker) return _cancelRequest; }
+        }
+
+        public void Cancel() { lock (_cancelLocker) _cancelRequest = true; }
+
+        public void ThrowIfCancellationRequested()
+        {
+            if (IsCancellationRequested) throw new OperationCanceledException();
         }
     }
 
@@ -127,7 +180,7 @@ namespace PluginCheckNet
         [DllExport]
         public unsafe static void Finalize(void* data)
         {
-            Measure.Dispose(); // (Aragas) Recommend to put this in all samples.
+            Measure.Dispose();
             uint id = (uint)data;
             Measures.Remove(id);
         }
