@@ -73,12 +73,6 @@ namespace PluginCheckNet
                 API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
             }
 
-            if (_networkThread == null)
-            {
-                _networkThread = new Thread(CheckConnection);
-                _networkThread.Start(ConnectionType);
-            }
-
         }
 
         // (Aragas) Just reading all variables from .dll and showing in Rainmeter.
@@ -88,7 +82,7 @@ namespace PluginCheckNet
             {
                 if (ConnectionType == "NETWORK" || ConnectionType == "INTERNET")
                 {
-                    if (_networkThread.ThreadState == ThreadState.Stopped)
+                    if (_networkThread == null ||_networkThread.ThreadState == ThreadState.Stopped)
                     // (Aragas) We check here if it is the time to update information.
                     {
                         _networkThread = new Thread(CheckConnection);
