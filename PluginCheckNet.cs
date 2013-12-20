@@ -1,4 +1,5 @@
-﻿using Rainmeter;
+﻿using System.Runtime.InteropServices;
+using Rainmeter;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -30,20 +31,13 @@ namespace PluginCheckNet
                 }
             }
 
-            if (ReturnValue == 1.0 && (string)type == "INTERNET")
+            if (ReturnValue == 1.0 && (string) type == "INTERNET")
             {
-                try
+                if (IsConnectedToInternet())
                 {
-                    if (Dns.GetHostAddresses("www.msftncsi.com")[0].ToString().Length > 6)
-                    {
-                        ReturnValue = 1.0;
-                    }
-                    else
-                    {
-                        ReturnValue = -1.0;
-                    }
+                    ReturnValue = 1.0;
                 }
-                catch
+                else
                 {
                     ReturnValue = -1.0;
                 }
@@ -114,6 +108,14 @@ namespace PluginCheckNet
         {
             if (_networkThread.IsAlive)
                 _networkThread.Abort();
+        }
+
+        [DllImport("wininet.dll")]
+        private extern static bool InternetGetConnectedState(out int description, int reservedValue);
+        public static bool IsConnectedToInternet()
+        {
+            int desc;
+            return InternetGetConnectedState(out desc, 0);
         }
     }
 
