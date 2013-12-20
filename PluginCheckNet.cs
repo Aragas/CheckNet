@@ -19,7 +19,7 @@ namespace PluginCheckNet
         static Thread _networkThread;
         private static RulyCanceler canceler;
 
-        public void FinishAction(string action)
+        public void FinishAction()
         {
             if (!String.IsNullOrEmpty(_finishAction))
             {
@@ -27,7 +27,7 @@ namespace PluginCheckNet
             }
         }
 
-        void CheckConnection(object type, RulyCanceler c)
+        private void CheckConnection(string type, RulyCanceler c)
         {
             while (true)
             {
@@ -68,12 +68,12 @@ namespace PluginCheckNet
             }
                 #endregion
 
-            FinishAction(_finishAction);
-            //try { OtherMethod(c); }
-            //finally { /* any required cleanup */ }
+            FinishAction();
+
             API.Log(API.LogType.Error, "ThreadIsClosed");
             canceler.Cancel();
             }
+
             //Thread.CurrentThread.Abort(); // Never end a thread in the main Update() function.
         }
 
@@ -115,13 +115,8 @@ namespace PluginCheckNet
                             try
                             {
                                 CheckConnection(ConnectionType, canceler);
-
                             }
-                            catch (OperationCanceledException)
-                            {
-                                
-                            }
-
+                            catch (OperationCanceledException) {}
                         });
                         _networkThread.Start();
                     }
@@ -160,7 +155,7 @@ namespace PluginCheckNet
     {
         object _cancelLocker = new object();
         bool _cancelRequest;
-        public bool IsCancellationRequested
+        bool IsCancellationRequested
         {
             get { lock (_cancelLocker) return _cancelRequest; }
         }
