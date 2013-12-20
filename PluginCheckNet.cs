@@ -16,44 +16,39 @@ namespace PluginCheckNet
 
         static Thread _networkThread;
 
-        void Internet()
+        void CheckConnection(object type)
         {
-            if (!NetworkInterface.GetIsNetworkAvailable())
+            if ((string)type == "NETWORK" || (string)type == "INTERNET")
             {
-                ReturnValue = -1.0;
-                return;
-            }
-
-            try
-            {
-                IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
-
-                if (addresslist[0].ToString().Length > 6)
-                {
-                    ReturnValue = 1.0;
-                }
-                else
+                if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0)
                 {
                     ReturnValue = -1.0;
                 }
-            }
-            catch
-            {
-                ReturnValue = -1.0;
+                else
+                {
+                    ReturnValue = 1.0;
+                }
             }
 
-            Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
-        }
+            if (ReturnValue == 1.0 && (string)type == "INTERNET")
+            {
+                try
+                {
+                    IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
 
-        void Network()
-        {
-            if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0)
-            {
-                ReturnValue = -1.0;
-            }
-            else
-            {
-                ReturnValue = 1.0;
+                    if (addresslist[0].ToString().Length > 6)
+                    {
+                        ReturnValue = 1.0;
+                    }
+                    else
+                    {
+                        ReturnValue = -1.0;
+                    }
+                }
+                catch
+                {
+                    ReturnValue = -1.0;
+                }
             }
 
             Thread.CurrentThread.Abort(); // (Aragas) Don't use that void in the main thread!!
@@ -65,7 +60,7 @@ namespace PluginCheckNet
 
         internal void Reload(API rm, ref double maxValue) // (Aragas) Removed Rainmeter.
         {
-            ConnectionType = rm.ReadString("ConnectionType", "Internet");
+            ConnectionType = rm.ReadString("ConnectionType", "INTERNET").ToUpperInvariant();
             UpdateRate = rm.ReadInt("UpdateRate", 20);
 
             if (UpdateRate <= 0)
@@ -73,27 +68,15 @@ namespace PluginCheckNet
                 UpdateRate = 20;
             }
 
-            switch (ConnectionType.ToUpperInvariant())
+            if (ConnectionType != "NETWORK" && ConnectionType != "INTERNET")
             {
-                case "INTERNET":
-                    if (_networkThread == null)
-                    {
-                        _networkThread = new Thread(Internet);
-                        _networkThread.Start();
-                    }
-                    break;
+                API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
+            }
 
-                case "NETWORK":
-                    if (_networkThread == null)
-                    {
-                        _networkThread = new Thread(Network);
-                        _networkThread.Start();
-                    }
-                    break;
-
-                default:
-                    API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
-                    break;
+            if (_networkThread == null)
+            {
+                _networkThread = new Thread(CheckConnection);
+                _networkThread.Start(ConnectionType);
             }
 
         }
@@ -101,31 +84,17 @@ namespace PluginCheckNet
         // (Aragas) Just reading all variables from .dll and showing in Rainmeter.
         internal double Update()
         {
-            switch (ConnectionType.ToUpperInvariant())
+            if (UpdateCounter == 0)
             {
-                case "NETWORK":
-                    if (UpdateCounter == 0)
+                if (ConnectionType == "network" || ConnectionType == "internet")
+                {
+                    if (_networkThread.ThreadState == ThreadState.Stopped)
+                    // (Aragas) We check here if it is the time to update information.
                     {
-                        if (_networkThread.ThreadState == ThreadState.Stopped)
-                            // (Aragas) We check here if it is the time to update information.
-                        {
-                            _networkThread = new Thread(Network);
-                            _networkThread.Start();
-                        }
+                        _networkThread = new Thread(CheckConnection);
+                        _networkThread.Start(ConnectionType);
                     }
-                    break;
-
-                case "INTERNET":
-                    if (UpdateCounter == 0)
-                    {
-                        if (_networkThread.ThreadState == ThreadState.Stopped)
-                            // (Aragas) We check here if it is the time to update information.
-                        {
-                            _networkThread = new Thread(Internet);
-                            _networkThread.Start();
-                        }
-                    }
-                    break;
+                }
             }
 
             // (Aragas) Counter must be placed in Update()
