@@ -32,7 +32,7 @@ namespace PluginCheckNet
             }
         }
 
-        private void ConnectionTypeCheck(string type, RulyCanceler c)
+        private void TypeCheck(string type, RulyCanceler c)
         {
             while (true)
             {
@@ -96,7 +96,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                ConnectionTypeCheck(Type, _canceler);
+                                TypeCheck(Type, _canceler);
                             }
                             catch (OperationCanceledException) { }
                         });
@@ -114,7 +114,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                ConnectionTypeCheck(Type, _canceler);
+                                TypeCheck(Type, _canceler);
                             }
                             catch (OperationCanceledException) { }
                         });
@@ -150,7 +150,7 @@ namespace PluginCheckNet
                             {
                                 try
                                 {
-                                    ConnectionTypeCheck(Type, _canceler);
+                                    TypeCheck(Type, _canceler);
                                 }
                                 catch (OperationCanceledException) {}
                             });
@@ -172,7 +172,7 @@ namespace PluginCheckNet
                             {
                                 try
                                 {
-                                    ConnectionTypeCheck(Type, _canceler);
+                                    TypeCheck(Type, _canceler);
                                 }
                                 catch (OperationCanceledException) {}
                             });
