@@ -38,7 +38,7 @@ namespace PluginCheckNet
             }
         }
 
-        private void TypeCheck(string type, RulyCanceler c)
+        private void TypeCheck(MeasureType type, RulyCanceler c)
         {
             while (true)
             {
@@ -46,30 +46,30 @@ namespace PluginCheckNet
 
                 #region Check
 
-                if (type == MeasureType.CaseOne.ToString())
+                if (type == MeasureType.CaseOne)
                 {
                     CaseOne = NetworkInterface.GetIsNetworkAvailable();
                 }
 
-                if (type == MeasureType.CaseTwo.ToString())
+                if (type == MeasureType.CaseTwo)
                 {
                     // If Network is broken - we don't need to check internet.
                     if (NetworkInterface.GetIsNetworkAvailable())
                     {
                         try
                         {
-                            CaseTwo = NetworkInterface.LoopbackInterfaceIndex;
+                            CaseTwo = 1234;
                         }
                         catch
                         {
-                            CaseTwo = 0;
+                            CaseTwo = 12345;
                         }
                     }
                 }
 
-                if (type == MeasureType.CaseThree.ToString())
+                if (type == MeasureType.CaseThree)
                 {
-                    CaseThree = Dns.GetHostAddresses("www.msftncsi.com")[0].ToString();
+                    CaseThree = "www.msftncsi.com";
                 }
 
                 #endregion
@@ -134,7 +134,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                TypeCheck(MeasureType.CaseOne.ToString(), _canceler);
+                                TypeCheck(MeasureType.CaseOne, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
@@ -161,7 +161,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                TypeCheck(MeasureType.CaseTwo.ToString(), _canceler);
+                                TypeCheck(MeasureType.CaseTwo, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
@@ -195,7 +195,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                TypeCheck(MeasureType.CaseThree.ToString(), _canceler);
+                                TypeCheck(MeasureType.CaseThree, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
