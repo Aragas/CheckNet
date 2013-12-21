@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
@@ -17,6 +16,7 @@ namespace PluginCheckNet
 
         private bool CaseOne;
         private bool CaseTwo;
+        private double ReturnValue;
 
 
         private IntPtr _skinHandle;
@@ -157,7 +157,15 @@ namespace PluginCheckNet
                             _networkThread.Start();
                         }
                     }
-                    return CaseOne ? 1.0 : -1.0;
+
+                    if (CaseOne)
+                    {
+                        ReturnValue = 1.0;
+                    }
+                    else
+                    {
+                        ReturnValue = -1.0;
+                    }
                     break;
                 #endregion
 
@@ -179,7 +187,15 @@ namespace PluginCheckNet
                             _networkThread.Start();
                         }
                     }
-                    return CaseTwo ? 1.0 : -1.0;
+
+                    if (CaseTwo)
+                    {
+                        ReturnValue = 1.0;
+                    }
+                    else
+                    {
+                        ReturnValue = -1.0;
+                    }
                     break;
                 #endregion
             }
@@ -190,7 +206,7 @@ namespace PluginCheckNet
                 UpdateCounter = 0;
             }
 
-            return 0.0;
+            return ReturnValue;
         }
 
         //internal string GetString()
