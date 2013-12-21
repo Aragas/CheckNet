@@ -91,12 +91,6 @@ namespace PluginCheckNet
 
         internal double Update()
         {
-            UpdateCounter = UpdateCounter + 1;
-            if (UpdateCounter >= UpdateRate)
-            {
-                UpdateCounter = 0;
-            }
-
             switch (ConnectionType)
             {
                 #region Network
@@ -150,6 +144,12 @@ namespace PluginCheckNet
                     return InternetAvailable ? 1.0 : -1.0;
                     break;
                 #endregion
+            }
+
+            UpdateCounter = UpdateCounter + 1;
+            if (UpdateCounter >= UpdateRate)
+            {
+                UpdateCounter = 0;
             }
 
             return 0.0;
