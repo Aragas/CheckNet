@@ -10,9 +10,12 @@ namespace PluginCheckNet
     internal class Measure
     {
         public string ConnectionType;
-        public double ReturnValue;
         public int UpdateCounter;
         public int UpdateRate;
+
+        public bool NetworkAvailable;
+        public bool InternetAvailable;
+
 
         private IntPtr _skinHandle;
         private string _finishAction;
@@ -34,47 +37,34 @@ namespace PluginCheckNet
                 c.ThrowIfCancellationRequested();
 
                 #region code
-                if ((string)type == "NETWORK" || (string)type == "INTERNET")
-            {
-                if (Convert.ToDouble(NetworkInterface.GetIsNetworkAvailable()) == 0)
-                {
-                    ReturnValue = -1.0;
-                }
-                else
-                {
-                    ReturnValue = 1.0;
-                }
-            }
 
-            if (ReturnValue == 1.0 && (string)type == "INTERNET")
-            {
-                try
+                if (type == "NETWORK")
                 {
-                    IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+                    NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+                }
 
-                    if (addresslist[0].ToString().Length > 6)
+                if (type == "INTERNET" && NetworkInterface.GetIsNetworkAvailable())
+                {
+                    try
                     {
-                        ReturnValue = 1.0;
+                        IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+
+                        InternetAvailable = (addresslist[0].ToString().Length > 6);
                     }
-                    else
+                    catch
                     {
-                        ReturnValue = -1.0;
+                        InternetAvailable = false;
                     }
                 }
-                catch
-                {
-                    ReturnValue = -1.0;
-                }
-            }
+
                 #endregion
 
-            FinishAction();
+                FinishAction();
 
-            API.Log(API.LogType.Error, "ThreadIsClosed");
-            _canceler.Cancel();
+                API.Log(API.LogType.Error, "ThreadIsClosed");
+                c.Cancel();
             }
 
-            //Thread.CurrentThread.Abort(); // Never end a thread in the main Update() function.
         }
 
         internal Measure()
@@ -83,9 +73,10 @@ namespace PluginCheckNet
 
         internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
-            _skinHandle = rm.GetSkin();
             ConnectionType = rm.ReadString("ConnectionType", "INTERNET").ToUpperInvariant();
+            _skinHandle = rm.GetSkin();
             _finishAction = rm.ReadString("FinishAction", "");
+
             if (ConnectionType != "NETWORK" && ConnectionType != "INTERNET")
             {
                 API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
@@ -100,35 +91,68 @@ namespace PluginCheckNet
 
         internal double Update()
         {
-            if (UpdateCounter == 0)
-            {
-                if (ConnectionType == "NETWORK" || ConnectionType == "INTERNET")
-                {
-                    if (_networkThread == null ||_networkThread.ThreadState == ThreadState.Stopped)
-                    //We check here to see if all existing instances of the thread have stopped,
-                    //and start a new one if so.
-                    {
-                        _canceler = new RulyCanceler();
-                        _networkThread = new Thread(() =>
-                        {
-                            try
-                            {
-                                CheckConnection(ConnectionType, _canceler);
-                            }
-                            catch (OperationCanceledException) {}
-                        });
-                        _networkThread.Start();
-                    }
-                }
-            }
-
             UpdateCounter = UpdateCounter + 1;
             if (UpdateCounter >= UpdateRate)
             {
                 UpdateCounter = 0;
             }
 
-            return ReturnValue;
+            switch (ConnectionType)
+            {
+                #region Network
+                case "NETWORK":
+                    if (UpdateCounter == 0)
+                    {
+                        //We check here to see if all existing instances of the thread have stopped,
+                        //and start a new one if so.
+                        if (_networkThread == null || _networkThread.ThreadState == ThreadState.Stopped)
+                        {
+                            _canceler = new RulyCanceler();
+                            _networkThread = new Thread(() =>
+                            {
+                                try
+                                {
+                                    CheckConnection(ConnectionType, _canceler);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                }
+                            });
+                            _networkThread.Start();
+                        }
+                    }
+                    return NetworkAvailable ? 1.0 : -1.0;
+                    break;
+                #endregion
+
+                #region Internet
+                case "INTERNET":
+                    if (UpdateCounter == 0)
+                    {
+                        //We check here to see if all existing instances of the thread have stopped,
+                        //and start a new one if so.
+                        if (_networkThread == null || _networkThread.ThreadState == ThreadState.Stopped)
+                        {
+                            _canceler = new RulyCanceler();
+                            _networkThread = new Thread(() =>
+                            {
+                                try
+                                {
+                                    CheckConnection(ConnectionType, _canceler);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                }
+                            });
+                            _networkThread.Start();
+                        }
+                    }
+                    return InternetAvailable ? 1.0 : -1.0;
+                    break;
+                #endregion
+            }
+
+            return 0.0;
         }
 
         //internal string GetString()
