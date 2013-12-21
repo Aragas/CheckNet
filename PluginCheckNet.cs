@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
@@ -9,12 +10,13 @@ namespace PluginCheckNet
 {
     internal class Measure
     {
-        public string ConnectionType;
+        public string Type;
+
         public int UpdateCounter;
         public int UpdateRate;
 
-        public bool NetworkAvailable;
-        public bool InternetAvailable;
+        private bool CaseOne;
+        private bool CaseTwo;
 
 
         private IntPtr _skinHandle;
@@ -30,30 +32,34 @@ namespace PluginCheckNet
             }
         }
 
-        private void CheckConnection(string type, RulyCanceler c)
+        private void ConnectionTypeCheck(string type, RulyCanceler c)
         {
             while (true)
             {
                 c.ThrowIfCancellationRequested();
 
-                #region code
+                #region Check
 
-                if (type == "NETWORK")
+                if (type == "CASEONE")
                 {
-                    NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+                    CaseOne = NetworkInterface.GetIsNetworkAvailable();
                 }
 
-                if (type == "INTERNET" && NetworkInterface.GetIsNetworkAvailable())
+                if (type == "CASETWO")
                 {
-                    try
+                    // If Network is broken - we don't need to check internet.
+                    if (NetworkInterface.GetIsNetworkAvailable())
                     {
-                        IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
+                        try
+                        {
+                            IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
 
-                        InternetAvailable = (addresslist[0].ToString().Length > 6);
-                    }
-                    catch
-                    {
-                        InternetAvailable = false;
+                            CaseTwo = (addresslist[0].ToString().Length > 6);
+                        }
+                        catch
+                        {
+                            CaseTwo = false;
+                        }
                     }
                 }
 
@@ -73,13 +79,53 @@ namespace PluginCheckNet
 
         internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
-            ConnectionType = rm.ReadString("ConnectionType", "INTERNET").ToUpperInvariant();
+            Type = rm.ReadString("ConnectionType", "").ToUpperInvariant();
             _skinHandle = rm.GetSkin();
             _finishAction = rm.ReadString("FinishAction", "");
 
-            if (ConnectionType != "NETWORK" && ConnectionType != "INTERNET")
+            // Switch is better because we can have a lot of options. 
+            // All logic is in Update(), so we just need to check that this option in acceptable.
+            switch (Type)
             {
-                API.Log(API.LogType.Error, "CheckNet.dll: ConnectionType=" + ConnectionType + " not valid");
+                #region CaseOne
+                case "CASEONE":
+                    if (_networkThread == null)
+                    {
+                        _canceler = new RulyCanceler();
+                        _networkThread = new Thread(() =>
+                        {
+                            try
+                            {
+                                ConnectionTypeCheck(Type, _canceler);
+                            }
+                            catch (OperationCanceledException) { }
+                        });
+                        _networkThread.Start();
+                    }
+                    break;
+                #endregion
+
+                #region CaseTwo
+                case "CASETWO":
+                    if (_networkThread == null)
+                    {
+                        _canceler = new RulyCanceler();
+                        _networkThread = new Thread(() =>
+                        {
+                            try
+                            {
+                                ConnectionTypeCheck(Type, _canceler);
+                            }
+                            catch (OperationCanceledException) { }
+                        });
+                        _networkThread.Start();
+                    }
+                    break;
+                #endregion
+
+                default:
+                    API.Log(API.LogType.Error, "CheckNet.dll: Type=" + Type + " not valid");
+                    break;
             }
 
             UpdateRate = rm.ReadInt("UpdateRate", 20);
@@ -91,57 +137,49 @@ namespace PluginCheckNet
 
         internal double Update()
         {
-            switch (ConnectionType)
+            switch (Type)
             {
-                #region Network
-                case "NETWORK":
+                #region CaseOne
+                case "CASEONE":
                     if (UpdateCounter == 0)
                     {
-                        //We check here to see if all existing instances of the thread have stopped,
-                        //and start a new one if so.
-                        if (_networkThread == null || _networkThread.ThreadState == ThreadState.Stopped)
+                        if (_networkThread.ThreadState == ThreadState.Stopped)
                         {
                             _canceler = new RulyCanceler();
                             _networkThread = new Thread(() =>
                             {
                                 try
                                 {
-                                    CheckConnection(ConnectionType, _canceler);
+                                    ConnectionTypeCheck(Type, _canceler);
                                 }
-                                catch (OperationCanceledException)
-                                {
-                                }
+                                catch (OperationCanceledException) {}
                             });
                             _networkThread.Start();
                         }
                     }
-                    return NetworkAvailable ? 1.0 : -1.0;
+                    return CaseOne ? 1.0 : -1.0;
                     break;
                 #endregion
 
-                #region Internet
-                case "INTERNET":
+                #region CaseTwo
+                case "CASETWO":
                     if (UpdateCounter == 0)
                     {
-                        //We check here to see if all existing instances of the thread have stopped,
-                        //and start a new one if so.
-                        if (_networkThread == null || _networkThread.ThreadState == ThreadState.Stopped)
+                        if (_networkThread.ThreadState == ThreadState.Stopped)
                         {
                             _canceler = new RulyCanceler();
                             _networkThread = new Thread(() =>
                             {
                                 try
                                 {
-                                    CheckConnection(ConnectionType, _canceler);
+                                    ConnectionTypeCheck(Type, _canceler);
                                 }
-                                catch (OperationCanceledException)
-                                {
-                                }
+                                catch (OperationCanceledException) {}
                             });
                             _networkThread.Start();
                         }
                     }
-                    return InternetAvailable ? 1.0 : -1.0;
+                    return CaseTwo ? 1.0 : -1.0;
                     break;
                 #endregion
             }
@@ -169,8 +207,10 @@ namespace PluginCheckNet
 
         internal static void Dispose()
         {
-            if (_networkThread.IsAlive)
+            if (_networkThread.IsAlive && _networkThread != null)
+            {
                 _canceler.Cancel();
+            }
         }
     }
 
