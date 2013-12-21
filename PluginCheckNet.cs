@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -17,29 +18,19 @@ namespace PluginCheckNet
         }
         MeasureType Type;
 
-        bool UpdatedString;
-        int UpdateCounter;
-        int UpdateRate;
-
         bool CaseOne;
         int CaseTwo;
         string CaseThree;
-        string ReturnValueString;
-        double ReturnValueDouble;
-
-
-        IntPtr _skinHandle;
-        string _finishAction;
 
         public void FinishAction()
         {
-            if (!String.IsNullOrEmpty(_finishAction))
+            if (!String.IsNullOrEmpty(Action))
             {
-                API.Execute(_skinHandle, _finishAction);
+                API.Execute(_skinHandle, Action);
             }
         }
 
-        private void TypeCheck(MeasureType type, RulyCanceler c)
+        private void TypeVoid(MeasureType type, RulyCanceler c)
         {
             while (true)
             {
@@ -89,12 +80,6 @@ namespace PluginCheckNet
 
         internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
-            
-            _skinHandle = rm.GetSkin();
-            _finishAction = rm.ReadString("FinishAction", "");
-
-            // Switch is better because we can have a lot of options. 
-            // All logic is in Update(), so we just need to check that this option in acceptable.
             string type = rm.ReadString("Type", "");
             switch (type.ToUpperInvariant())
             {
@@ -115,11 +100,18 @@ namespace PluginCheckNet
                     break;
             }
 
+            #region FinishAction
+            _skinHandle = rm.GetSkin();
+            Action = rm.ReadString("FinishAction", "");
+            #endregion
+
+            #region Update
             UpdateRate = rm.ReadInt("UpdateRate", 20);
             if (UpdateRate <= 0)
             {
                 UpdateRate = 20;
             }
+            #endregion
         }
 
         internal double Update()
@@ -135,7 +127,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                TypeCheck(MeasureType.CaseOne, _canceler);
+                                TypeVoid(MeasureType.CaseOne, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
@@ -162,7 +154,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                TypeCheck(MeasureType.CaseTwo, _canceler);
+                                TypeVoid(MeasureType.CaseTwo, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
@@ -174,12 +166,14 @@ namespace PluginCheckNet
                 #endregion
             }
 
+            #region Update
             UpdateCounter = UpdateCounter + 1;
             if (UpdateCounter >= UpdateRate)
             {
                 UpdateCounter = 0;
                 if (UpdatedString) UpdatedString = false;
             }
+            #endregion
 
             return ReturnValueDouble;
         }
@@ -188,7 +182,6 @@ namespace PluginCheckNet
         {
             switch (Type)
             {
-                #region CaseThree
                 case MeasureType.CaseThree:
                     if (!UpdatedString)
                     {
@@ -197,7 +190,7 @@ namespace PluginCheckNet
                         {
                             try
                             {
-                                TypeCheck(MeasureType.CaseThree, _canceler);
+                                TypeVoid(MeasureType.CaseThree, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
@@ -206,8 +199,6 @@ namespace PluginCheckNet
 
                     ReturnValueString = CaseThree;
                     break;
-
-                #endregion
             }
 
             return ReturnValueString;
@@ -222,9 +213,25 @@ namespace PluginCheckNet
         {
             return;
         }
+
+        #region Update
+        bool UpdatedString;
+        int UpdateCounter;
+        int UpdateRate;
+        #endregion
+
+        #region ReturnValues
+        string ReturnValueString;
+        double ReturnValueDouble;
+        #endregion
+
+        #region FinishAction
+        IntPtr _skinHandle;
+        string Action;
+        #endregion
     }
 
-    class RulyCanceler
+    internal class RulyCanceler
     {
         object _cancelLocker = new object();
         bool _cancelRequest;
