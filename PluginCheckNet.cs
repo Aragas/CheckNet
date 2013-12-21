@@ -9,21 +9,21 @@ namespace PluginCheckNet
 {
     internal class Measure
     {
-        public IntPtr SkinHandle;
         public string ConnectionType;
         public double ReturnValue;
         public int UpdateCounter;
         public int UpdateRate;
-        private string _finishAction;
 
-        static Thread _networkThread;
-        private static RulyCanceler canceler;
+        private IntPtr _skinHandle;
+        private string _finishAction;
+        private static Thread _networkThread;
+        private static RulyCanceler _canceler;
 
         public void FinishAction()
         {
             if (!String.IsNullOrEmpty(_finishAction))
             {
-                API.Execute(SkinHandle, _finishAction);
+                API.Execute(_skinHandle, _finishAction);
             }
         }
 
@@ -71,7 +71,7 @@ namespace PluginCheckNet
             FinishAction();
 
             API.Log(API.LogType.Error, "ThreadIsClosed");
-            canceler.Cancel();
+            _canceler.Cancel();
             }
 
             //Thread.CurrentThread.Abort(); // Never end a thread in the main Update() function.
@@ -83,7 +83,7 @@ namespace PluginCheckNet
 
         internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
-            SkinHandle = rm.GetSkin();
+            _skinHandle = rm.GetSkin();
             ConnectionType = rm.ReadString("ConnectionType", "INTERNET").ToUpperInvariant();
             _finishAction = rm.ReadString("FinishAction", "");
             if (ConnectionType != "NETWORK" && ConnectionType != "INTERNET")
@@ -108,12 +108,12 @@ namespace PluginCheckNet
                     //We check here to see if all existing instances of the thread have stopped,
                     //and start a new one if so.
                     {
-                        canceler = new RulyCanceler();
+                        _canceler = new RulyCanceler();
                         _networkThread = new Thread(() =>
                         {
                             try
                             {
-                                CheckConnection(ConnectionType, canceler);
+                                CheckConnection(ConnectionType, _canceler);
                             }
                             catch (OperationCanceledException) {}
                         });
@@ -146,7 +146,7 @@ namespace PluginCheckNet
         internal static void Dispose()
         {
             if (_networkThread.IsAlive)
-                canceler.Cancel();
+                _canceler.Cancel();
         }
     }
 
