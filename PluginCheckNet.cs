@@ -17,6 +17,7 @@ namespace PluginCheckNet
         }
         MeasureType Type;
 
+        bool UpdatedString;
         int UpdateCounter;
         int UpdateRate;
 
@@ -177,6 +178,7 @@ namespace PluginCheckNet
             if (UpdateCounter >= UpdateRate)
             {
                 UpdateCounter = 0;
+                if (UpdatedString) UpdatedString = false;
             }
 
             return ReturnValueDouble;
@@ -188,7 +190,7 @@ namespace PluginCheckNet
             {
                 #region CaseThree
                 case MeasureType.CaseThree:
-                    if (UpdateCounter == 0)
+                    if (!UpdatedString)
                     {
                         RulyCanceler _canceler = new RulyCanceler();
                         new Thread(() =>
@@ -199,6 +201,7 @@ namespace PluginCheckNet
                             }
                             catch (OperationCanceledException) {}
                         }).Start();
+                        UpdatedString = true;
                     }
 
                     ReturnValueString = CaseThree;
