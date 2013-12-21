@@ -9,20 +9,26 @@ namespace PluginCheckNet
 {
     internal class Measure
     {
-        public string Type;
+        enum MeasureType
+        {
+            CaseOne,
+            CaseTwo,
+            CaseThree
+        }
+        MeasureType Type;
 
-        public int UpdateCounter;
-        public int UpdateRate;
+        int UpdateCounter;
+        int UpdateRate;
 
-        private bool CaseOne;
-        private bool CaseTwo;
-        private double ReturnValue;
+        bool CaseOne;
+        int CaseTwo;
+        string CaseThree;
+        string ReturnValueString;
+        double ReturnValueDouble;
 
 
-        private IntPtr _skinHandle;
-        private string _finishAction;
-        private static Thread _networkThread;
-        private static RulyCanceler _canceler;
+        IntPtr _skinHandle;
+        string _finishAction;
 
         public void FinishAction()
         {
@@ -40,27 +46,30 @@ namespace PluginCheckNet
 
                 #region Check
 
-                if (type == "CASEONE")
+                if (type == MeasureType.CaseOne.ToString())
                 {
                     CaseOne = NetworkInterface.GetIsNetworkAvailable();
                 }
 
-                if (type == "CASETWO")
+                if (type == MeasureType.CaseTwo.ToString())
                 {
                     // If Network is broken - we don't need to check internet.
                     if (NetworkInterface.GetIsNetworkAvailable())
                     {
                         try
                         {
-                            IPAddress[] addresslist = Dns.GetHostAddresses("www.msftncsi.com");
-
-                            CaseTwo = (addresslist[0].ToString().Length > 6);
+                            CaseTwo = NetworkInterface.LoopbackInterfaceIndex;
                         }
                         catch
                         {
-                            CaseTwo = false;
+                            CaseTwo = 0;
                         }
                     }
+                }
+
+                if (type == MeasureType.CaseThree.ToString())
+                {
+                    CaseThree = Dns.GetHostAddresses("www.msftncsi.com")[0].ToString();
                 }
 
                 #endregion
@@ -79,49 +88,26 @@ namespace PluginCheckNet
 
         internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
-            Type = rm.ReadString("ConnectionType", "").ToUpperInvariant();
+            
             _skinHandle = rm.GetSkin();
             _finishAction = rm.ReadString("FinishAction", "");
 
             // Switch is better because we can have a lot of options. 
             // All logic is in Update(), so we just need to check that this option in acceptable.
-            switch (Type)
+            string type = rm.ReadString("Type", "");
+            switch (type.ToUpperInvariant())
             {
-                #region CaseOne
                 case "CASEONE":
-                    if (_networkThread == null)
-                    {
-                        _canceler = new RulyCanceler();
-                        _networkThread = new Thread(() =>
-                        {
-                            try
-                            {
-                                TypeCheck(Type, _canceler);
-                            }
-                            catch (OperationCanceledException) { }
-                        });
-                        _networkThread.Start();
-                    }
+                    Type = MeasureType.CaseOne;
                     break;
-                #endregion
-
-                #region CaseTwo
+                    
                 case "CASETWO":
-                    if (_networkThread == null)
-                    {
-                        _canceler = new RulyCanceler();
-                        _networkThread = new Thread(() =>
-                        {
-                            try
-                            {
-                                TypeCheck(Type, _canceler);
-                            }
-                            catch (OperationCanceledException) { }
-                        });
-                        _networkThread.Start();
-                    }
+                    Type = MeasureType.CaseTwo;
                     break;
-                #endregion
+
+                case "CASETHREE":
+                    Type = MeasureType.CaseThree;
+                    break;
 
                 default:
                     API.Log(API.LogType.Error, "CheckNet.dll: Type=" + Type + " not valid");
@@ -140,63 +126,50 @@ namespace PluginCheckNet
             switch (Type)
             {
                 #region CaseOne
-                case "CASEONE":
+                case MeasureType.CaseOne:
                     if (UpdateCounter == 0)
                     {
-                        if (_networkThread.ThreadState == ThreadState.Stopped)
+                        RulyCanceler _canceler = new RulyCanceler();
+                        new Thread(() =>
                         {
-                            _canceler = new RulyCanceler();
-                            _networkThread = new Thread(() =>
+                            try
                             {
-                                try
-                                {
-                                    TypeCheck(Type, _canceler);
-                                }
-                                catch (OperationCanceledException) {}
-                            });
-                            _networkThread.Start();
-                        }
+                                TypeCheck(MeasureType.CaseOne.ToString(), _canceler);
+                            }
+                            catch (OperationCanceledException) {}
+                        }).Start();
                     }
 
                     if (CaseOne)
                     {
-                        ReturnValue = 1.0;
+                        ReturnValueDouble = 1.0;
                     }
                     else
                     {
-                        ReturnValue = -1.0;
+                        ReturnValueDouble = -1.0;
                     }
                     break;
-                #endregion
+
+                    #endregion
 
                 #region CaseTwo
-                case "CASETWO":
+                case MeasureType.CaseTwo:
                     if (UpdateCounter == 0)
                     {
-                        if (_networkThread.ThreadState == ThreadState.Stopped)
+                        RulyCanceler _canceler = new RulyCanceler();
+                        new Thread(() =>
                         {
-                            _canceler = new RulyCanceler();
-                            _networkThread = new Thread(() =>
+                            try
                             {
-                                try
-                                {
-                                    TypeCheck(Type, _canceler);
-                                }
-                                catch (OperationCanceledException) {}
-                            });
-                            _networkThread.Start();
-                        }
+                                TypeCheck(MeasureType.CaseTwo.ToString(), _canceler);
+                            }
+                            catch (OperationCanceledException) {}
+                        }).Start();
                     }
 
-                    if (CaseTwo)
-                    {
-                        ReturnValue = 1.0;
-                    }
-                    else
-                    {
-                        ReturnValue = -1.0;
-                    }
+                    ReturnValueDouble = CaseTwo;
                     break;
+
                 #endregion
             }
 
@@ -206,27 +179,45 @@ namespace PluginCheckNet
                 UpdateCounter = 0;
             }
 
-            return ReturnValue;
+            return ReturnValueDouble;
         }
 
-        //internal string GetString()
-        //{
-        //    return "";
-        //}
-
-        //internal void ExecuteBang(string args)
-        //{
-        //}
-
-        //it is recommended that this Dispose() function be in all examples,
-        //and called in Finalize().
-
-        internal static void Dispose()
+        internal string GetString()
         {
-            if (_networkThread.IsAlive && _networkThread != null)
+            switch (Type)
             {
-                _canceler.Cancel();
+                #region CaseThree
+                case MeasureType.CaseThree:
+                    if (UpdateCounter == 0)
+                    {
+                        RulyCanceler _canceler = new RulyCanceler();
+                        new Thread(() =>
+                        {
+                            try
+                            {
+                                TypeCheck(MeasureType.CaseThree.ToString(), _canceler);
+                            }
+                            catch (OperationCanceledException) {}
+                        }).Start();
+                    }
+
+                    ReturnValueString = CaseThree;
+                    break;
+
+                #endregion
             }
+
+            return ReturnValueString;
+        }
+
+        internal void ExecuteBang(string args)
+        {
+            return;
+        }
+
+        internal static void Finalize()
+        {
+            return;
         }
     }
 
@@ -254,7 +245,7 @@ namespace PluginCheckNet
         [DllExport]
         public unsafe static void Finalize(void* data)
         {
-            Measure.Dispose();
+            Measure.Finalize();
             uint id = (uint)data;
             Measures.Remove(id);
         }
@@ -279,19 +270,19 @@ namespace PluginCheckNet
             return Measures[id].Update();
         }
 
-        //[DllExport]
-        //public unsafe static char* GetString(void* data)
-        //{
-        //    uint id = (uint)data;
-        //    fixed (char* s = Measures[id].GetString()) return s;
-        //}
+        [DllExport]
+        public unsafe static char* GetString(void* data)
+        {
+            uint id = (uint)data;
+            fixed (char* s = Measures[id].GetString()) return s;
+        }
 
-        //[DllExport]
-        //public unsafe static void ExecuteBang(void* data, char* args)
-        //{
-        //    uint id = (uint)data;
-        //    Measures[id].ExecuteBang(new string(args));
-        //}
+        [DllExport]
+        public unsafe static void ExecuteBang(void* data, char* args)
+        {
+            uint id = (uint)data;
+            Measures[id].ExecuteBang(new string(args));
+        }
     }
 
 }
