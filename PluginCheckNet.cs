@@ -30,11 +30,8 @@ namespace PluginCheckNet
             }
         }
 
-        private void TypeVoid(MeasureType type, RulyCanceler c)
+        private void TypeVoid(MeasureType type)
         {
-            while (true)
-            {
-                c.ThrowIfCancellationRequested();
 
                 #region Check
 
@@ -68,8 +65,9 @@ namespace PluginCheckNet
 
                 FinishAction();
 
-                API.Log(API.LogType.Error, "ThreadIsClosed");
-                c.Cancel();
+                API.Log(API.LogType.Warning, "CheckNet.dll ThreadIsClosing");
+                
+                Thread.CurrentThread.Abort();
             }
 
         }
@@ -122,14 +120,9 @@ namespace PluginCheckNet
                 case MeasureType.CaseOne:
                     if (UpdateCounter == 0)
                     {
-                        RulyCanceler _canceler = new RulyCanceler();
                         new Thread(() =>
                         {
-                            try
-                            {
-                                TypeVoid(MeasureType.CaseOne, _canceler);
-                            }
-                            catch (OperationCanceledException) {}
+                            TypeVoid(MeasureType.CaseOne);
                         }).Start();
                     }
 
@@ -149,14 +142,9 @@ namespace PluginCheckNet
                 case MeasureType.CaseTwo:
                     if (UpdateCounter == 0)
                     {
-                        RulyCanceler _canceler = new RulyCanceler();
                         new Thread(() =>
                         {
-                            try
-                            {
-                                TypeVoid(MeasureType.CaseTwo, _canceler);
-                            }
-                            catch (OperationCanceledException) {}
+                            TypeVoid(MeasureType.CaseTwo);
                         }).Start();
                     }
 
@@ -185,14 +173,9 @@ namespace PluginCheckNet
                 case MeasureType.CaseThree:
                     if (!UpdatedString)
                     {
-                        RulyCanceler _canceler = new RulyCanceler();
                         new Thread(() =>
                         {
-                            try
-                            {
-                                TypeVoid(MeasureType.CaseThree, _canceler);
-                            }
-                            catch (OperationCanceledException) {}
+                            TypeVoid(MeasureType.CaseThree;
                         }).Start();
                         UpdatedString = true;
                     }
@@ -229,23 +212,6 @@ namespace PluginCheckNet
         IntPtr _skinHandle;
         string Action;
         #endregion
-    }
-
-    internal class RulyCanceler
-    {
-        object _cancelLocker = new object();
-        bool _cancelRequest;
-        bool IsCancellationRequested
-        {
-            get { lock (_cancelLocker) return _cancelRequest; }
-        }
-
-        public void Cancel() { lock (_cancelLocker) _cancelRequest = true; }
-
-        public void ThrowIfCancellationRequested()
-        {
-            if (IsCancellationRequested) throw new OperationCanceledException();
-        }
     }
 
     static class Plugin
