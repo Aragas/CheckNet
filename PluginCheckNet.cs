@@ -18,9 +18,9 @@ namespace PluginCheckNet
         }
         MeasureType Type;
 
-        object CaseOne; // Used as bool in code.
-        object CaseTwo; // Used as int in code.
-        object CaseThree; // Used as string in code.
+        object CaseOne = false; // Used as bool in code.
+        object CaseTwo = 0; // Used as int in code.
+        object CaseThree = ""; // Used as string in code.
 
         public void FinishAction()
         {
@@ -55,8 +55,8 @@ namespace PluginCheckNet
                 {
                     // Do something
                     // CaseThree =
-                    
-                    CaseThree = "string"
+
+                    CaseThree = "string";
                 }
 
                 #endregion
@@ -68,7 +68,6 @@ namespace PluginCheckNet
                 Thread.CurrentThread.Abort();
             }
 
-        }
 
         internal Measure()
         {
@@ -128,7 +127,7 @@ namespace PluginCheckNet
                     
                     // Do something after creating a new thread.
                     // Return your value that you recieve from your thread here.
-                    if (CaseOne)
+                    if ((bool)CaseOne)
                     {
                         ReturnValueDouble = 1.0;
                     }
@@ -154,7 +153,7 @@ namespace PluginCheckNet
                     
                     // Do something after creating a new thread.
                     // Return your value that you recieve from your thread here.
-                    ReturnValueDouble = CaseTwo;
+                    ReturnValueDouble = (double)CaseTwo;
                     break;
 
                 #endregion
@@ -185,14 +184,14 @@ namespace PluginCheckNet
                         // Starting a new thread.
                         new Thread(() =>
                         {
-                            TypeVoid(MeasureType.CaseThree;
+                            TypeVoid(MeasureType.CaseThree);
                         }).Start();
                         UpdatedString = true;
                     }
                     
                     // Do something after creating a new thread.
                     // Return your value that you recieve from your thread here.
-                    ReturnValueString = CaseThree;
+                    ReturnValueString = (string)CaseThree;
                     break;
             }
 
