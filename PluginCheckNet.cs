@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Threading;
 using Rainmeter;
 
@@ -19,7 +16,7 @@ namespace PluginCheckNet
         MeasureType Type;
 
         object CaseOne = false; // Used as bool in code.
-        object CaseTwo = 0; // Used as int in code.
+        object CaseTwo = 0.0; // Used as double in code.
         object CaseThree = ""; // Used as string in code.
 
         public void FinishAction()
@@ -48,7 +45,7 @@ namespace PluginCheckNet
                     // Do something
                     // CaseTwo =
                     
-                    CaseTwo = 2014;
+                    CaseTwo = 2014.0;
                 }
 
                 if (type == MeasureType.CaseThree)
