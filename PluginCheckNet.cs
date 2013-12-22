@@ -18,9 +18,9 @@ namespace PluginCheckNet
         }
         MeasureType Type;
 
-        bool CaseOne;
-        int CaseTwo;
-        string CaseThree;
+        object CaseOne; // Used as bool in code.
+        object CaseTwo; // Used as int in code.
+        object CaseThree; // Used as string in code.
 
         public void FinishAction()
         {
@@ -37,28 +37,26 @@ namespace PluginCheckNet
 
                 if (type == MeasureType.CaseOne)
                 {
-                    CaseOne = NetworkInterface.GetIsNetworkAvailable();
+                    // Do something....
+                    // CaseOne =
+                    
+                    CaseOne = true;
                 }
 
                 if (type == MeasureType.CaseTwo)
                 {
-                    // If Network is broken - we don't need to check internet.
-                    if (NetworkInterface.GetIsNetworkAvailable())
-                    {
-                        try
-                        {
-                            CaseTwo = 1234;
-                        }
-                        catch
-                        {
-                            CaseTwo = 12345;
-                        }
-                    }
+                    // Do something
+                    // CaseTwo =
+                    
+                    CaseTwo = 2014;
                 }
 
                 if (type == MeasureType.CaseThree)
                 {
-                    CaseThree = "www.msftncsi.com";
+                    // Do something
+                    // CaseThree =
+                    
+                    CaseThree = "string"
                 }
 
                 #endregion
@@ -79,17 +77,17 @@ namespace PluginCheckNet
         internal void Reload(Rainmeter.API rm, ref double maxValue)
         {
             string type = rm.ReadString("Type", "");
-            switch (type.ToUpperInvariant())
+            switch (type.ToLowerInvariant())
             {
-                case "CASEONE":
+                case "caseone":
                     Type = MeasureType.CaseOne;
                     break;
                     
-                case "CASETWO":
+                case "casetwo":
                     Type = MeasureType.CaseTwo;
                     break;
 
-                case "CASETHREE":
+                case "casethree":
                     Type = MeasureType.CaseThree;
                     break;
 
@@ -118,14 +116,18 @@ namespace PluginCheckNet
             {
                 #region CaseOne
                 case MeasureType.CaseOne:
+                    // Do something only after UpdateCounter = 0.
                     if (UpdateCounter == 0)
                     {
+                        // Starting a new thread.
                         new Thread(() =>
                         {
                             TypeVoid(MeasureType.CaseOne);
                         }).Start();
                     }
-
+                    
+                    // Do something after creating a new thread.
+                    // Return your value that you recieve from your thread here.
                     if (CaseOne)
                     {
                         ReturnValueDouble = 1.0;
@@ -140,14 +142,18 @@ namespace PluginCheckNet
 
                 #region CaseTwo
                 case MeasureType.CaseTwo:
+                    // Do something only after UpdateCounter = 0.
                     if (UpdateCounter == 0)
                     {
+                        // Starting a new thread.
                         new Thread(() =>
                         {
                             TypeVoid(MeasureType.CaseTwo);
                         }).Start();
                     }
-
+                    
+                    // Do something after creating a new thread.
+                    // Return your value that you recieve from your thread here.
                     ReturnValueDouble = CaseTwo;
                     break;
 
@@ -171,15 +177,21 @@ namespace PluginCheckNet
             switch (Type)
             {
                 case MeasureType.CaseThree:
+                    // Do something only after UpdateCounter = 0.
+                    // GetString isn't called every 1 sec, so we need
+                    // to make another type of check.
                     if (!UpdatedString)
                     {
+                        // Starting a new thread.
                         new Thread(() =>
                         {
                             TypeVoid(MeasureType.CaseThree;
                         }).Start();
                         UpdatedString = true;
                     }
-
+                    
+                    // Do something after creating a new thread.
+                    // Return your value that you recieve from your thread here.
                     ReturnValueString = CaseThree;
                     break;
             }
